@@ -1117,28 +1117,270 @@ function exportJathagamPDF() {
   if (typeof window.jspdf === 'undefined') return toast('PDF library ஏற்றப்படவில்லை', 'error');
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const W = 210, H = 297;
+  const ML = 10, MR = 10, MT = 10;
+  let y = MT;
 
-  doc.setFontSize(18);
-  doc.text('Jothidam Tamil — Jathagam Report', 20, 20);
-  doc.setFontSize(12);
-  doc.text(`Name: ${currentChart.name}`, 20, 35);
-  doc.text(`Date of Birth: ${currentChart.dob}`, 20, 43);
-  doc.text(`Time of Birth: ${currentChart.tob}`, 20, 51);
-  doc.text(`Nakshatra: ${currentChart.nakshatra}`, 20, 59);
-  doc.text(`Rasi: ${currentChart.rasi}`, 20, 67);
-  doc.text(`Lagnam: ${currentChart.lagnam}`, 20, 75);
+  // ── helpers ──
+  const line  = (x1,y1,x2,y2,w=0.3) => { doc.setLineWidth(w); doc.line(x1,y1,x2,y2); };
+  const rect  = (x,ry,w,h,lw=0.3)   => { doc.setLineWidth(lw); doc.rect(x,ry,w,h); };
+  const txt   = (t,x,ty,sz=8,bold=false,align='left') => {
+    doc.setFontSize(sz);
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.text(String(t), x, ty, { align });
+  };
 
-  doc.setFontSize(10);
-  doc.text('Planet Positions:', 20, 90);
-  let y = 98;
-  Object.entries(currentChart.positions).forEach(([planet, house]) => {
-    const idx = PLANET_EN.indexOf(planet);
-    doc.text(`${idx >= 0 ? PLANETS[idx] : planet} (${planet}): House ${house}`, 25, y);
-    y += 8;
+  const shopName = settings.name || 'Jothidam Tamil';
+  const shopPhone = settings.phone || '';
+  const shopAddr  = settings.address || '';
+
+  // ── 1. HEADER ──────────────────────────────────────────────────
+  // Ganesha icon (orange square)
+  doc.setFillColor(255, 140, 0);
+  doc.rect(ML, y, 12, 12, 'F');
+  txt('Om', ML+6, y+7, 7, true, 'center');
+
+  // Murugan icon (red square)
+  doc.setFillColor(180, 30, 30);
+  doc.rect(W-MR-12, y, 12, 12, 'F');
+  txt('Vel', W-MR-6, y+7, 7, true, 'center');
+
+  // Shop name centered
+  doc.setTextColor(0, 0, 128);
+  txt(shopName, W/2, y+5, 13, true, 'center');
+  doc.setTextColor(80, 80, 80);
+  txt('Jothidam Tamil — Vedic Astrology Report', W/2, y+10, 7, false, 'center');
+  doc.setTextColor(0, 0, 0);
+  y += 15;
+
+  // Thin header line
+  doc.setDrawColor(0, 0, 128);
+  line(ML, y, W-MR, y, 0.5);
+  y += 3;
+
+  // ── 2. PROFILE DETAILS (two-column key:value) ──────────────────
+  const pob = currentChart.pob ? currentChart.pob.split('|')[0] : '-';
+  const tamilDate = getTamilDate(currentChart.dob);
+  const leftCol  = [
+    ['Name / பெயர்',       currentChart.name],
+    ['Date of Birth / பிறந்த தேதி', currentChart.dob],
+    ['Time / நேரம்',       currentChart.tob + ' IST'],
+    ['Place / இடம்',      pob],
+  ];
+  const rightCol = [
+    ['Nakshatra / நட்சத்திரம்', currentChart.nakshatra],
+    ['Rasi / ராசி',         currentChart.rasi],
+    ['Lagnam / லக்னம்',     currentChart.lagnam],
+    ['Tamil Year / தமிழ் ஆண்டு', tamilDate.year + ' ' + tamilDate.month],
+  ];
+  const colW = (W - ML - MR) / 2 - 4;
+  leftCol.forEach(([k,v], i) => {
+    txt(k + ' :', ML, y + i*5, 7.5, false);
+    txt(v, ML + 38, y + i*5, 7.5, true);
+  });
+  rightCol.forEach(([k,v], i) => {
+    txt(k + ' :', W/2 + 2, y + i*5, 7.5, false);
+    txt(v, W/2 + 42, y + i*5, 7.5, true);
+  });
+  y += leftCol.length * 5 + 3;
+
+  doc.setDrawColor(180, 180, 180);
+  line(ML, y, W-MR, y, 0.3);
+  y += 4;
+
+  // ── 3. PLANETARY MATRIX TABLE ──────────────────────────────────
+  doc.setDrawColor(0, 0, 0);
+  const tableW = W - ML - MR;
+  const cols   = [22, 18, 30, 12, 22, 22, 22, 22]; // widths
+  const heads  = ['Planet','Degrees','Star / Nakshatra','Pada','Star Lord','Sign / Rasi','D9 Sign','Status'];
+
+  // Header row
+  doc.setFillColor(0, 0, 100);
+  doc.rect(ML, y, tableW, 6, 'F');
+  doc.setTextColor(255, 255, 255);
+  let cx = ML;
+  heads.forEach((h, i) => {
+    txt(h, cx + 1, y + 4, 6.5, true);
+    cx += cols[i];
+  });
+  doc.setTextColor(0, 0, 0);
+  y += 6;
+
+  // Header bottom line
+  line(ML, y, W-MR, y, 0.4);
+
+  // Planet rows
+  const jd = toJulianDay(currentChart.dob, currentChart.tob);
+  const lons = planetLongitudes(jd);
+  lons.Ketu = ((lons.Rahu + 180) % 360);
+  const T = (jd - 2451545.0) / 36525.0;
+  const ayanamsa = 23.85 + 0.0136 * T * 100;
+
+  const PLANET_ABBR = ['Sun','Moon','Mars','Merc','Jupi','Venu','Satu','Rahu','Ketu'];
+  const STAR_LORDS  = ['கேது','சுக்கிரன்','சூரியன்','சந்திரன்','செவ்வாய்','ராகு','குரு','சனி','புதன்'];
+  const DASA_SEQ    = ['கேது','சுக்கிரன்','சூரியன்','சந்திரன்','செவ்வாய்','ராகு','குரு','சனி','புதன்'];
+
+  const rowH = 5.5;
+  PLANET_EN.forEach((planet, pi) => {
+    const lon = lons[planet];
+    if (lon === undefined) return;
+    const sid     = ((lon - ayanamsa) % 360 + 360) % 360;
+    const deg     = sid.toFixed(2) + '°';
+    const nakIdx  = Math.floor(sid / (360/27));
+    const pada    = Math.floor((sid % (360/27)) / (360/27/4)) + 1;
+    const starLord= STAR_LORDS[nakIdx % 9];
+    const rasiIdx = Math.floor(sid / 30);
+    const d9Idx   = (nakIdx * 4 + (pada - 1)) % 12;
+    const status  = (planet === 'Sun' || planet === 'Moon') ? 'Luminaries' :
+                    (planet === 'Rahu' || planet === 'Ketu') ? 'Shadow' : 'Graha';
+
+    const rowY = y + pi * rowH;
+    // Alternate row shading
+    if (pi % 2 === 0) {
+      doc.setFillColor(245, 245, 255);
+      doc.rect(ML, rowY, tableW, rowH, 'F');
+    }
+
+    const vals = [
+      PLANET_ABBR[pi] + ' / ' + PLANETS[pi].substring(0,4),
+      deg,
+      NAKSHATRAS[nakIdx],
+      String(pada),
+      starLord,
+      RASIS[rasiIdx],
+      RASIS[d9Idx],
+      status
+    ];
+    cx = ML;
+    vals.forEach((v, i) => {
+      txt(v, cx + 1, rowY + 3.8, 6.5, i === 0);
+      cx += cols[i];
+    });
   });
 
-  doc.text('Generated by Jothidam Tamil', 20, 280);
+  y += PLANET_EN.length * rowH;
+  doc.setDrawColor(0, 0, 0);
+  line(ML, y, W-MR, y, 0.4);
+  y += 5;
+
+  // ── 4. DUAL CHART GRID ─────────────────────────────────────────
+  const chartSize = 72;
+  const cellW = chartSize / 4;
+  const cellH = chartSize / 4;
+  const rasiX  = ML;
+  const navX   = ML + chartSize + 14;
+
+  // Build house→planets map
+  const rasiHouseMap = {};
+  const navHouseMap  = {};
+  const navPos = calcNavamsam(currentChart.positions);
+  Object.entries(currentChart.positions).forEach(([p, h]) => {
+    if (!rasiHouseMap[h]) rasiHouseMap[h] = [];
+    const idx = PLANET_EN.indexOf(p);
+    rasiHouseMap[h].push(idx >= 0 ? PLANET_ABBR[idx] : p.substring(0,3));
+  });
+  Object.entries(navPos).forEach(([p, h]) => {
+    if (!navHouseMap[h]) navHouseMap[h] = [];
+    const idx = PLANET_EN.indexOf(p);
+    navHouseMap[h].push(idx >= 0 ? PLANET_ABBR[idx] : p.substring(0,3));
+  });
+
+  // South Indian chart layout: house numbers in 4x4 grid
+  // RASI_LAYOUT = [12,1,2,3, 11,-1,-1,4, 10,-1,-1,5, 9,8,7,6]
+  const drawChart = (ox, oy, houseMap, label) => {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.4);
+    doc.rect(ox, oy, chartSize, chartSize);
+
+    RASI_LAYOUT.forEach((house, idx) => {
+      const col = idx % 4;
+      const row = Math.floor(idx / 4);
+      const cx2 = ox + col * cellW;
+      const cy2 = oy + row * cellH;
+
+      if (house === -1) {
+        // Center label cell
+        if (idx === 5) {
+          doc.setFillColor(240, 240, 255);
+          doc.rect(cx2, cy2, cellW*2, cellH*2, 'F');
+          doc.setDrawColor(0,0,0);
+          doc.rect(cx2, cy2, cellW*2, cellH*2);
+          doc.setTextColor(0, 0, 128);
+          txt(label, cx2 + cellW, cy2 + cellH + 1, 7, true, 'center');
+          doc.setTextColor(0, 0, 0);
+        }
+        return;
+      }
+
+      doc.setLineWidth(0.3);
+      doc.rect(cx2, cy2, cellW, cellH);
+
+      // House number (small, top-left)
+      doc.setTextColor(150, 150, 150);
+      txt(String(house), cx2 + 1, cy2 + 3, 5, false);
+      doc.setTextColor(0, 0, 0);
+
+      // Planet abbreviations
+      const planets = houseMap[house] || [];
+      if (planets.length > 0) {
+        const pStr = planets.join(' ');
+        txt(pStr, cx2 + cellW/2, cy2 + cellH/2 + 1.5, 5.5, true, 'center');
+      }
+    });
+  };
+
+  // Chart labels
+  doc.setTextColor(0, 0, 128);
+  txt('ராசி கட்டம் (Rasi Chart)', rasiX + chartSize/2, y, 8, true, 'center');
+  txt('நவாம்சம் (Navamsam)', navX + chartSize/2, y, 8, true, 'center');
+  doc.setTextColor(0, 0, 0);
+  y += 4;
+
+  drawChart(rasiX, y, rasiHouseMap, 'ராசி');
+  drawChart(navX,  y, navHouseMap,  'நவாம்சம்');
+  y += chartSize + 6;
+
+  // ── 5. DASA BHUKTI FOOTER ──────────────────────────────────────
+  doc.setDrawColor(180, 180, 180);
+  line(ML, y, W-MR, y, 0.3);
+  y += 4;
+
+  doc.setTextColor(0, 0, 100);
+  txt('தசா புக்தி விவரம் (Dasa Bhukti)', ML, y, 8, true);
+  doc.setTextColor(0, 0, 0);
+  y += 5;
+
+  const timeline = calcDasaBhukti(currentChart.moonNakIdx, currentChart.dob);
+  const today = new Date();
+  const current = timeline.find(t => today >= t.start && today < t.end);
+  const dasaRows = timeline.slice(0, 5);
+
+  if (current) {
+    txt(`Current Dasa: ${current.lord}  (${current.start.getFullYear()} - ${current.end.getFullYear()})`, ML, y, 7.5, true);
+    y += 5;
+  }
+
+  dasaRows.forEach(t => {
+    const isCurrent = current && t.lord === current.lord;
+    if (isCurrent) doc.setTextColor(0, 0, 180);
+    txt(`${t.lord} Dasa : ${t.start.toLocaleDateString('en-IN')} to ${t.end.toLocaleDateString('en-IN')}  (${t.years} yrs)`, ML, y, 7, isCurrent);
+    doc.setTextColor(0, 0, 0);
+    y += 4.5;
+  });
+
+  // ── 6. FOOTER LINE & FOOTNOTE ──────────────────────────────────
+  const footerY = H - 12;
+  doc.setDrawColor(0, 0, 0);
+  line(ML, footerY, W-MR, footerY, 0.4);
+
+  doc.setTextColor(100, 100, 100);
+  const ts = new Date().toLocaleString('en-IN');
+  txt('Jothidam Tamil v1.0 | For personal use only', ML, footerY + 4, 6, false);
+  if (shopPhone) txt('Ph: ' + shopPhone, ML, footerY + 8, 6, false);
+  txt('Generated: ' + ts, W - MR, footerY + 4, 6, false, 'right');
+  doc.setTextColor(0, 0, 0);
+
   doc.save(`Jathagam_${currentChart.name}_${currentChart.dob}.pdf`);
   toast('PDF பதிவிறக்கம் செய்யப்பட்டது');
 }
@@ -1176,3 +1418,140 @@ function exportPoruthamPDF() {
 populateNakshatraDropdowns();
 populateRasiSelector();
 refreshProfileDropdown();
+
+function previewJathagamPDF() {
+  if (!currentChart) return toast('முதலில் ஜாதகம் உருவாக்கவும்', 'error');
+
+  const shopName  = settings.name    || 'Jothidam Tamil';
+  const shopPhone = settings.phone   || '';
+  const shopAddr  = settings.address || '';
+  const pob       = currentChart.pob ? currentChart.pob.split('|')[0] : '-';
+  const tamilDate = getTamilDate(currentChart.dob);
+
+  const jd = toJulianDay(currentChart.dob, currentChart.tob);
+  const lons = planetLongitudes(jd);
+  lons.Ketu = ((lons.Rahu + 180) % 360);
+  const T = (jd - 2451545.0) / 36525.0;
+  const ayanamsa = 23.85 + 0.0136 * T * 100;
+  const PLANET_ABBR = ['Sun','Moon','Mars','Merc','Jupi','Venu','Satu','Rahu','Ketu'];
+  const STAR_LORDS  = ['கேது','சுக்கிரன்','சூரியன்','சந்திரன்','செவ்வாய்','ராகு','குரு','சனி','புதன்'];
+
+  const planetRows = PLANET_EN.map((planet, pi) => {
+    const lon = lons[planet];
+    if (lon === undefined) return '';
+    const sid    = ((lon - ayanamsa) % 360 + 360) % 360;
+    const nakIdx = Math.floor(sid / (360/27));
+    const pada   = Math.floor((sid % (360/27)) / (360/27/4)) + 1;
+    const rasiIdx= Math.floor(sid / 30);
+    const d9Idx  = (nakIdx * 4 + (pada - 1)) % 12;
+    const status = (planet === 'Sun' || planet === 'Moon') ? 'Luminaries' :
+                   (planet === 'Rahu' || planet === 'Ketu') ? 'Shadow' : 'Graha';
+    const bg = pi % 2 === 0 ? '#f5f5ff' : '#ffffff';
+    return `<tr style="background:${bg}">
+      <td><strong>${PLANET_ABBR[pi]}</strong> / ${PLANETS[pi].substring(0,4)}</td>
+      <td>${sid.toFixed(2)}&deg;</td>
+      <td>${NAKSHATRAS[nakIdx]}</td>
+      <td>${pada}</td>
+      <td>${STAR_LORDS[nakIdx % 9]}</td>
+      <td>${RASIS[rasiIdx]}</td>
+      <td>${RASIS[d9Idx]}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+
+  const rasiHouseMap = {}, navHouseMap = {};
+  const navPos = calcNavamsam(currentChart.positions);
+  Object.entries(currentChart.positions).forEach(([p, h]) => {
+    if (!rasiHouseMap[h]) rasiHouseMap[h] = [];
+    const idx = PLANET_EN.indexOf(p);
+    rasiHouseMap[h].push(idx >= 0 ? PLANET_ABBR[idx] : p.substring(0,3));
+  });
+  Object.entries(navPos).forEach(([p, h]) => {
+    if (!navHouseMap[h]) navHouseMap[h] = [];
+    const idx = PLANET_EN.indexOf(p);
+    navHouseMap[h].push(idx >= 0 ? PLANET_ABBR[idx] : p.substring(0,3));
+  });
+
+  const buildChartHTML = (houseMap, label) =>
+    RASI_LAYOUT.map((house, idx) => {
+      if (house === -1) {
+        if (idx !== 5) return '';
+        return `<div style="grid-column:span 2;grid-row:span 2;background:#eef;border:1px solid #aaa;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:7pt;color:#00008b">${label}</div>`;
+      }
+      const planets = (houseMap[house] || []).join(' ');
+      return `<div style="border:1px solid #aaa;padding:2px;position:relative;min-height:36px">
+        <span style="position:absolute;top:1px;left:2px;color:#aaa;font-size:6pt">${house}</span>
+        <span style="display:block;text-align:center;margin-top:10px;font-weight:700;color:#00008b;font-size:6.5pt">${planets}</span>
+      </div>`;
+    }).join('');
+
+  const timeline = calcDasaBhukti(currentChart.moonNakIdx, currentChart.dob);
+  const today = new Date();
+  const curDasa = timeline.find(t => today >= t.start && today < t.end);
+  const dasaHTML = timeline.slice(0, 5).map(t => {
+    const isCur = curDasa && t.lord === curDasa.lord;
+    return `<span style="margin-right:14px;${isCur ? 'font-weight:700;color:#00008b' : ''}">${t.lord}: ${t.start.getFullYear()}–${t.end.getFullYear()}</span>`;
+  }).join('');
+
+  const ts = new Date().toLocaleString('en-IN');
+
+  document.getElementById('pdf-preview-content').innerHTML = `
+    <style>
+      .pw{font-family:'Segoe UI',sans-serif;color:#000;font-size:8pt;line-height:1.4}
+      .pw table{width:100%;border-collapse:collapse}
+      .pw th{background:#000064;color:#fff;padding:3px 4px;font-size:7.5pt;text-align:left}
+      .pw td{padding:2px 4px;font-size:7pt}
+      .pw .cg{display:grid;grid-template-columns:repeat(4,37px);grid-template-rows:repeat(4,37px)}
+    </style>
+    <div class="pw">
+      <div style="display:flex;align-items:center;margin-bottom:4px">
+        <div style="width:22px;height:22px;background:#ff8c00;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:7pt;border-radius:2px;flex-shrink:0">Om</div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:13pt;font-weight:700;color:#00008b">${shopName}</div>
+          <div style="font-size:7pt;color:#555">Jothidam Tamil — Vedic Astrology Report</div>
+          ${shopAddr ? `<div style="font-size:6.5pt;color:#777">${shopAddr}</div>` : ''}
+        </div>
+        <div style="width:22px;height:22px;background:#b41e1e;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:7pt;border-radius:2px;flex-shrink:0">Vel</div>
+      </div>
+      <hr style="border:none;border-top:1.5px solid #00008b;margin:4px 0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-bottom:6px">
+        <div><span style="color:#555">Name / பெயர் :</span> <strong>${currentChart.name}</strong></div>
+        <div><span style="color:#555">Nakshatra :</span> <strong>${currentChart.nakshatra}</strong></div>
+        <div><span style="color:#555">Date of Birth :</span> <strong>${currentChart.dob}</strong></div>
+        <div><span style="color:#555">Rasi / ராசி :</span> <strong>${currentChart.rasi}</strong></div>
+        <div><span style="color:#555">Time / நேரம் :</span> <strong>${currentChart.tob} IST</strong></div>
+        <div><span style="color:#555">Lagnam / லக்னம் :</span> <strong>${currentChart.lagnam}</strong></div>
+        <div><span style="color:#555">Place / இடம் :</span> <strong>${pob}</strong></div>
+        <div><span style="color:#555">Tamil Year :</span> <strong>${tamilDate.year} ${tamilDate.month}</strong></div>
+      </div>
+      <hr style="border:none;border-top:0.5px solid #ccc;margin:4px 0">
+      <table style="margin-bottom:8px">
+        <thead><tr><th>Planet</th><th>Degrees</th><th>Star / Nakshatra</th><th>Pada</th><th>Star Lord</th><th>Sign / Rasi</th><th>D9 Sign</th><th>Status</th></tr></thead>
+        <tbody>${planetRows}</tbody>
+      </table>
+      <hr style="border:none;border-top:0.5px solid #ccc;margin:4px 0">
+      <div style="display:flex;gap:20px;justify-content:center;margin:8px 0">
+        <div>
+          <div style="text-align:center;font-weight:700;color:#00008b;font-size:8pt;margin-bottom:3px">ராசி கட்டம் (Rasi Chart)</div>
+          <div class="cg">${buildChartHTML(rasiHouseMap, 'ராசி')}</div>
+        </div>
+        <div>
+          <div style="text-align:center;font-weight:700;color:#00008b;font-size:8pt;margin-bottom:3px">நவாம்சம் (Navamsam)</div>
+          <div class="cg">${buildChartHTML(navHouseMap, 'நவாம்சம்')}</div>
+        </div>
+      </div>
+      <hr style="border:none;border-top:0.5px solid #ccc;margin:4px 0">
+      <div style="margin-bottom:6px">
+        <div style="font-weight:700;color:#00008b;font-size:8pt;margin-bottom:3px">தசா புக்தி விவரம் (Dasa Bhukti)</div>
+        ${curDasa ? `<div style="margin-bottom:3px">Current Dasa: <strong style="color:#00008b">${curDasa.lord}</strong> (${curDasa.start.getFullYear()} – ${curDasa.end.getFullYear()})</div>` : ''}
+        <div>${dasaHTML}</div>
+      </div>
+      <hr style="border:none;border-top:1px solid #000;margin:4px 0">
+      <div style="display:flex;justify-content:space-between;font-size:6.5pt;color:#777">
+        <span>Jothidam Tamil v1.0 | For personal use only${shopPhone ? ' | Ph: ' + shopPhone : ''}</span>
+        <span>Generated: ${ts}</span>
+      </div>
+    </div>`;
+
+  openModal('pdf-preview-modal');
+}

@@ -87,6 +87,7 @@
           <button class="btn btn-gold" onclick="generateJathagam()">🪐 ஜாதகம் உருவாக்கு — Generate</button>
           <button class="btn btn-primary" onclick="saveProfile()">💾 சேமி — Save Profile</button>
           <button class="btn btn-pdf" onclick="exportJathagamPDF()">📄 PDF ஏற்றுமதி</button>
+          <button class="btn btn-secondary" onclick="previewJathagamPDF()">👁️ Preview</button>
           <button class="btn btn-danger" id="jt-delete-btn" onclick="deleteProfile()" style="display:none">🗑️ நீக்கு</button>
         </div>
       </div>
@@ -363,6 +364,15 @@
         <button class="btn btn-primary" onclick="confirmSaveProfile()">சேமி — Save</button>
         <button class="btn btn-outline" onclick="closeModal('profile-modal')">ரத்து — Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── PDF Preview Modal ── -->
+  <div class="modal-overlay hidden" id="pdf-preview-modal" style="align-items:flex-start;padding:20px;overflow-y:auto">
+    <div style="background:#fff;width:210mm;min-height:297mm;margin:0 auto;padding:10mm;position:relative;box-shadow:0 4px 32px rgba(0,0,0,.5);font-family:'Segoe UI',sans-serif;color:#000">
+      <button onclick="closeModal('pdf-preview-modal')" style="position:fixed;top:28px;right:28px;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:.9rem;z-index:9999">&#10005; Close</button>
+      <button onclick="exportJathagamPDF()" style="position:fixed;top:28px;right:120px;background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:.9rem;z-index:9999">📄 Download PDF</button>
+      <div id="pdf-preview-content"></div>
     </div>
   </div>
 
