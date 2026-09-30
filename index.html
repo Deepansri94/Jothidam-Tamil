@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ஜோதிடம் Tamil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <nav class="sidebar">
+    <div class="logo">
+      <span class="logo-title">🔯 ஜோதிடம்</span>
+      <span class="logo-sub">Jothidam Tamil</span>
+    </div>
+    <ul>
+      <li class="nav-item active" data-page="jathagam">🪐 ஜாதகம்</li>
+      <li class="nav-item" data-page="porutham">💍 பொருத்தம்</li>
+      <li class="nav-item" data-page="panchangam">📅 பஞ்சாங்கம்</li>
+      <li class="nav-item" data-page="rasipalan">⭐ ராசி பலன்</li>
+      <li class="nav-item" data-page="tools">🔮 கருவிகள்</li>
+      <li class="nav-item" data-page="settings">⚙️ அமைப்புகள்</li>
+    </ul>
+  </nav>
+
+  <main class="content">
+
+    <!-- ── Jathagam ── -->
+    <section id="jathagam" class="page active">
+      <h2>🪐 ஜாதகம் — Birth Chart</h2>
+
+      <div class="card">
+        <h3>பிறப்பு விவரங்கள் — Birth Details</h3>
+        <div class="form-grid-3">
+          <div class="form-row">
+            <label>பெயர் — Name *</label>
+            <input type="text" id="jt-name" placeholder="Full name" />
+          </div>
+          <div class="form-row">
+            <label>பிறந்த தேதி — Date of Birth *</label>
+            <input type="date" id="jt-dob" />
+          </div>
+          <div class="form-row">
+            <label>பிறந்த நேரம் — Time of Birth *</label>
+            <input type="time" id="jt-tob" />
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>பிறந்த இடம் — Place of Birth *</label>
+            <select id="jt-pob">
+              <option value="">-- Select City --</option>
+              <option value="Chennai|13.0827|80.2707">Chennai (சென்னை)</option>
+              <option value="Coimbatore|11.0168|76.9558">Coimbatore (கோயம்புத்தூர்)</option>
+              <option value="Madurai|9.9252|78.1198">Madurai (மதுரை)</option>
+              <option value="Tiruchirappalli|10.7905|78.7047">Tiruchirappalli (திருச்சி)</option>
+              <option value="Salem|11.6643|78.1460">Salem (சேலம்)</option>
+              <option value="Tirunelveli|8.7139|77.7567">Tirunelveli (திருநெல்வேலி)</option>
+              <option value="Vellore|12.9165|79.1325">Vellore (வேலூர்)</option>
+              <option value="Erode|11.3410|77.7172">Erode (ஈரோடு)</option>
+              <option value="Thoothukudi|8.7642|78.1348">Thoothukudi (தூத்துக்குடி)</option>
+              <option value="Dindigul|10.3624|77.9695">Dindigul (திண்டுக்கல்)</option>
+              <option value="Thanjavur|10.7870|79.1378">Thanjavur (தஞ்சாவூர்)</option>
+              <option value="Kanchipuram|12.8185|79.6947">Kanchipuram (காஞ்சிபுரம்)</option>
+              <option value="Kumbakonam|10.9602|79.3845">Kumbakonam (கும்பகோணம்)</option>
+              <option value="Nagercoil|8.1833|77.4119">Nagercoil (நாகர்கோவில்)</option>
+              <option value="Pudukkottai|10.3833|78.8001">Pudukkottai (புதுக்கோட்டை)</option>
+              <option value="Karur|10.9601|78.0766">Karur (கரூர்)</option>
+              <option value="Namakkal|11.2189|78.1674">Namakkal (நாமக்கல்)</option>
+              <option value="Villupuram|11.9401|79.4861">Villupuram (விழுப்புரம்)</option>
+              <option value="Cuddalore|11.7480|79.7714">Cuddalore (கடலூர்)</option>
+              <option value="Sivakasi|9.4533|77.7997">Sivakasi (சிவகாசி)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>சேமிக்கப்பட்ட ஜாதகங்கள் — Saved Profiles</label>
+            <select id="jt-profile-select" onchange="loadProfile(this.value)">
+              <option value="">-- Load saved profile --</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="generateJathagam()">🪐 ஜாதகம் உருவாக்கு — Generate</button>
+          <button class="btn btn-primary" onclick="saveProfile()">💾 சேமி — Save Profile</button>
+          <button class="btn btn-pdf" onclick="exportJathagamPDF()">📄 PDF ஏற்றுமதி</button>
+          <button class="btn btn-danger" id="jt-delete-btn" onclick="deleteProfile()" style="display:none">🗑️ நீக்கு</button>
+        </div>
+      </div>
+
+      <div id="jathagam-result" class="hidden">
+        <div class="card">
+          <h3>ஜாதக விவரங்கள் — Chart Details</h3>
+          <div id="jathagam-info" style="font-size:0.9rem;color:var(--color-text-body);line-height:2;margin-bottom:20px"></div>
+          <div class="chart-wrap">
+            <div>
+              <div class="chart-label">ராசி கட்டம் — Rasi Chart</div>
+              <div class="rasi-chart" id="rasi-chart"></div>
+            </div>
+            <div>
+              <div class="chart-label">நவாம்சம் கட்டம் — Navamsam Chart</div>
+              <div class="rasi-chart" id="navamsam-chart"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Porutham ── -->
+    <section id="porutham" class="page">
+      <h2>💍 திருமண பொருத்தம் — Marriage Matching</h2>
+      <div class="card">
+        <div class="form-grid-2">
+          <div>
+            <h3>மணமகன் — Boy</h3>
+            <div class="form-row">
+              <label>நட்சத்திரம் — Nakshatra *</label>
+              <select id="por-boy-nak"><option value="">-- Select --</option></select>
+            </div>
+            <div class="form-row hidden" id="por-boy-pada-row">
+              <label>பாதம் — Pada *</label>
+              <select id="por-boy-pada"></select>
+            </div>
+            <div class="form-row">
+              <label>ராசி — Rasi</label>
+              <input type="text" id="por-boy-rasi" readonly placeholder="Auto-filled" style="background:var(--color-surface)" />
+            </div>
+          </div>
+          <div>
+            <h3>மணமகள் — Girl</h3>
+            <div class="form-row">
+              <label>நட்சத்திரம் — Nakshatra *</label>
+              <select id="por-girl-nak"><option value="">-- Select --</option></select>
+            </div>
+            <div class="form-row hidden" id="por-girl-pada-row">
+              <label>பாதம் — Pada *</label>
+              <select id="por-girl-pada"></select>
+            </div>
+            <div class="form-row">
+              <label>ராசி — Rasi</label>
+              <input type="text" id="por-girl-rasi" readonly placeholder="Auto-filled" style="background:var(--color-surface)" />
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="calculatePorutham()">💍 பொருத்தம் கணக்கிடு — Calculate</button>
+          <button class="btn btn-pdf" onclick="exportPoruthamPDF()">📄 PDF ஏற்றுமதி</button>
+        </div>
+      </div>
+
+      <div id="porutham-result" class="hidden">
+        <div id="match-score-box" class="match-score-box"></div>
+        <div class="porutham-grid" id="porutham-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── Panchangam ── -->
+    <section id="panchangam" class="page">
+      <h2>📅 தமிழ் பஞ்சாங்கம் — Tamil Panchangam</h2>
+      <div class="card">
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>தேதி — Date</label>
+            <input type="date" id="pc-date" />
+          </div>
+          <div class="form-row">
+            <label>இடம் — Location</label>
+            <select id="pc-city">
+              <option value="Chennai|13.0827|80.2707">Chennai (சென்னை)</option>
+              <option value="Coimbatore|11.0168|76.9558">Coimbatore (கோயம்புத்தூர்)</option>
+              <option value="Madurai|9.9252|78.1198">Madurai (மதுரை)</option>
+              <option value="Tiruchirappalli|10.7905|78.7047">Tiruchirappalli (திருச்சி)</option>
+              <option value="Salem|11.6643|78.1460">Salem (சேலம்)</option>
+              <option value="Tirunelveli|8.7139|77.7567">Tirunelveli (திருநெல்வேலி)</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="renderPanchangam()">📅 பஞ்சாங்கம் காட்டு — Show</button>
+        </div>
+      </div>
+      <div id="panchangam-result" class="hidden">
+        <div class="panchangam-grid" id="panchangam-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── Rasi Palan ── -->
+    <section id="rasipalan" class="page">
+      <h2>⭐ ராசி பலன் — Horoscope</h2>
+      <div class="rasi-selector" id="rasi-selector"></div>
+      <div class="palan-tabs">
+        <button class="palan-tab active" onclick="setPalanTab('daily', this)">இன்று — Daily</button>
+        <button class="palan-tab" onclick="setPalanTab('weekly', this)">வாரம் — Weekly</button>
+        <button class="palan-tab" onclick="setPalanTab('monthly', this)">மாதம் — Monthly</button>
+        <button class="palan-tab" onclick="setPalanTab('yearly', this)">ஆண்டு — Yearly</button>
+      </div>
+      <div class="palan-content" id="palan-content">ராசியை தேர்ந்தெடுக்கவும் — Select a Rasi above to read your forecast.</div>
+    </section>
+
+    <!-- ── Tools ── -->
+    <section id="tools" class="page">
+      <h2>🔮 கருவிகள் — Astrological Tools</h2>
+
+      <!-- Dasa Bhukti -->
+      <div class="card">
+        <h3>தசா புக்தி — Dasa Bhukti</h3>
+        <div class="form-grid-3">
+          <div class="form-row">
+            <label>நட்சத்திரம் — Nakshatra *</label>
+            <select id="db-nakshatra">
+              <option value="">-- Select --</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>பிறந்த தேதி — Date of Birth *</label>
+            <input type="date" id="db-dob" />
+          </div>
+          <div class="form-row" style="display:flex;align-items:flex-end">
+            <button class="btn btn-gold" style="width:100%" onclick="renderDasaBhukti()">கணக்கிடு — Calculate</button>
+          </div>
+        </div>
+        <div id="dasa-result" class="hidden" style="margin-top:16px">
+          <div id="dasa-current" style="margin-bottom:12px;font-size:0.88rem;color:var(--color-primary)"></div>
+          <table class="dasa-table">
+            <thead><tr><th>தசா — Dasa</th><th>தொடக்கம் — Start</th><th>முடிவு — End</th><th>ஆண்டுகள் — Years</th></tr></thead>
+            <tbody id="dasa-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Numerology -->
+      <div class="card">
+        <h3>எண் கணிதம் — Numerology</h3>
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>பெயர் — Name *</label>
+            <input type="text" id="num-name" placeholder="Enter full name" />
+          </div>
+          <div class="form-row">
+            <label>பிறந்த தேதி — Date of Birth *</label>
+            <input type="date" id="num-dob" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="renderNumerology()">கணக்கிடு — Calculate</button>
+        </div>
+        <div id="num-result" class="hidden">
+          <div class="num-grid" id="num-grid"></div>
+        </div>
+      </div>
+
+      <!-- Pancha Pakshi -->
+      <div class="card">
+        <h3>பஞ்ச பட்சி சாஸ்திரம் — Pancha Pakshi Sastram</h3>
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>நட்சத்திரம் — Nakshatra *</label>
+            <select id="pp-nakshatra">
+              <option value="">-- Select --</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>தேதி — Date</label>
+            <input type="date" id="pp-date" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="renderPanchaPakshi()">காட்டு — Show</button>
+        </div>
+        <div id="pp-result" class="hidden" style="margin-top:16px">
+          <table class="data-table" id="pp-table">
+            <thead><tr><th>நேரம் — Time</th><th>பட்சி — Bird</th><th>செயல் — Activity</th><th>பலன் — Result</th></tr></thead>
+            <tbody id="pp-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Jamakol Arudam -->
+      <div class="card">
+        <h3>ஜாமக்கோல் அருடம் — Jamakol Arudam</h3>
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>ராசி — Rasi *</label>
+            <select id="jk-rasi">
+              <option value="">-- Select --</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>நட்சத்திரம் — Nakshatra *</label>
+            <select id="jk-nakshatra">
+              <option value="">-- Select --</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="renderJamakol()">காட்டு — Show</button>
+        </div>
+        <div id="jk-result" class="hidden" style="margin-top:16px">
+          <div class="palan-content" id="jk-content"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Settings ── -->
+    <section id="settings" class="page">
+      <h2>⚙️ அமைப்புகள் — Settings</h2>
+      <div class="card">
+        <h3>பொது அமைப்புகள் — General</h3>
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>பெயர் — Name</label>
+            <input type="text" id="s-name" placeholder="Your name" />
+          </div>
+          <div class="form-row">
+            <label>தொலைபேசி — Phone</label>
+            <input type="tel" id="s-phone" placeholder="10-digit mobile" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>முகவரி — Address</label>
+          <textarea id="s-address" rows="2" placeholder="Address (optional)"></textarea>
+        </div>
+        <div class="form-row">
+          <label>இயல்புநிலை நகரம் — Default City</label>
+          <select id="s-city">
+            <option value="Chennai|13.0827|80.2707">Chennai (சென்னை)</option>
+            <option value="Coimbatore|11.0168|76.9558">Coimbatore (கோயம்புத்தூர்)</option>
+            <option value="Madurai|9.9252|78.1198">Madurai (மதுரை)</option>
+            <option value="Tiruchirappalli|10.7905|78.7047">Tiruchirappalli (திருச்சி)</option>
+            <option value="Salem|11.6643|78.1460">Salem (சேலம்)</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 சேமி — Save</button>
+        </div>
+        <div id="settings-saved" class="hidden" style="margin-top:12px;color:var(--color-success);font-size:.88rem">✅ அமைப்புகள் சேமிக்கப்பட்டன.</div>
+      </div>
+
+      <div class="card">
+        <h3>பயன்பாட்டு புதுப்பிப்பு — App Update</h3>
+        <p style="color:var(--color-text-muted);font-size:.88rem;margin-bottom:14px">Check if a newer version of Jothidam Tamil is available.</p>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="check-update-btn" onclick="checkForAppUpdate()">🔄 புதுப்பிப்பு சரிபார்க்கவும்</button>
+        </div>
+        <div id="update-status" style="margin-top:10px;font-size:.88rem"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Profile Save Modal ── -->
+  <div class="modal-overlay hidden" id="profile-modal">
+    <div class="modal">
+      <h3>💾 சேமி — Save Profile</h3>
+      <div class="form-row">
+        <label>பெயர் — Name</label>
+        <input type="text" id="modal-profile-name" placeholder="Profile name" />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="confirmSaveProfile()">சேமி — Save</button>
+        <button class="btn btn-outline" onclick="closeModal('profile-modal')">ரத்து — Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
